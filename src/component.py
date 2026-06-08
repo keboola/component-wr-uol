@@ -6,12 +6,29 @@ import logging
 from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
 from keboola.component.sync_actions import SelectElement, ValidationResult
+from keboola.vcr import DefaultSanitizer
 
 from client.uol_client import UolClient, UolClientError
 from configuration import Configuration, WriteMode
 from endpoints import ENDPOINTS, get_endpoint
 from mapping import build_column_mapping_prefill
 from payload import build_payload
+
+# VCR sanitizers — picked up automatically by keboola.datadirtest VCR scaffold.
+# DefaultSanitizer strips the Authorization header and any values marked as
+# secrets in config.secrets.json.
+#
+# We override sensitive_fields to remove "code" from the default list because
+# UOL uses "errors[].code" for human-readable error codes (e.g. "has already
+# been taken", "can't be blank") which must appear verbatim in cassettes for
+# log comparison to pass. OAuth's "code" grant param is not used by this writer.
+VCR_SANITIZERS = [
+    DefaultSanitizer(
+        sensitive_fields=["access_token", "refresh_token", "id_token", "client_id",
+                          "client_secret", "client_assertion", "password", "token"],
+        additional_sensitive_fields=["api_token", "email"],
+    ),
+]
 
 RESULTS_TABLE = "write_results.csv"
 RESULTS_COLUMNS = ["row_index", "status", "uol_id", "error_code", "error_message"]

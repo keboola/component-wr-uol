@@ -1,0 +1,7 @@
+{
+  "_metadata": {"freeze_time": null, "keboola_vcr_version": "0.5.0", "recorded_at": "2026-06-08T10:52:12.392552+00:00"},
+  "interactions": [
+    {"request": {"body": "{\"name\": \"KBC-AUTH-FAIL-TEST\", \"external_id\": \"KBC-FUNC-TEST-AUTH-FAIL\"}", "headers": {"Accept": ["application/json"], "Content-Length": ["72"], "Content-Type": ["application/json"]}, "method": "POST", "uri": "https://test.demo.uol.cz/api/v1/contacts"}, "response": {"body": {"string": "{\"status\": \"401\", \"code\": \"REDACTED\", \"message\": \"Authentication failed. Please provide valid identification and token.\", \"developerMessage\": \"User authentication failed. Check that proper authentication header is present and that authenticating user has api access allowed.\"}"}, "headers": {"Content-Length": ["265"], "Content-Type": ["application/json"]}, "status": {"code": 401, "message": "Unauthorized"}}}
+  ],
+  "version": 1
+}

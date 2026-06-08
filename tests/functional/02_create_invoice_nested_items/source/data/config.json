@@ -1,0 +1,35 @@
+{
+  "parameters": {
+    "environment": "demo",
+    "email": "PLACEHOLDER_EMAIL@example.com",
+    "#api_token": "PLACEHOLDER_TOKEN",
+    "endpoint": "sales_invoices",
+    "write_mode": "create",
+    "column_mapping": [
+      {
+        "source": "buyer_id",
+        "destination": "buyer_id"
+      },
+      {
+        "source": "external_id",
+        "destination": "external_id"
+      },
+      {
+        "source": "items",
+        "destination": "items"
+      }
+    ],
+    "write_results_table": true,
+    "fail_on_error": false
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.sales_invoices",
+          "destination": "sales_invoices.csv"
+        }
+      ]
+    }
+  }
+}

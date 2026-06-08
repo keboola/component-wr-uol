@@ -1,0 +1,31 @@
+{
+  "parameters": {
+    "environment": "demo",
+    "email": "PLACEHOLDER_EMAIL@example.com",
+    "#api_token": "INVALID_TOKEN_FOR_AUTH_FAILURE_TEST",
+    "endpoint": "contacts",
+    "write_mode": "create",
+    "column_mapping": [
+      {
+        "source": "name",
+        "destination": "name"
+      },
+      {
+        "source": "external_id",
+        "destination": "external_id"
+      }
+    ],
+    "write_results_table": false,
+    "fail_on_error": true
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.contacts",
+          "destination": "contacts.csv"
+        }
+      ]
+    }
+  }
+}

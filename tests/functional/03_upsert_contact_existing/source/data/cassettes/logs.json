@@ -1,0 +1,12 @@
+{
+  "exit_code": null,
+  "stderr": "No action defined in the configuration, using the default run action.\n",
+  "logs": [
+    {
+      "level": "WARNING",
+      "logger": "root",
+      "message": "No action defined in the configuration, using the default run action.",
+      "timestamp": "2026-06-08T10:52:12.210Z"
+    }
+  ]
+}

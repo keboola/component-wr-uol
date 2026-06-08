@@ -1,0 +1,27 @@
+{
+  "parameters": {
+    "environment": "demo",
+    "email": "PLACEHOLDER_EMAIL@example.com",
+    "#api_token": "PLACEHOLDER_TOKEN",
+    "endpoint": "contact_bank_accounts",
+    "write_mode": "upsert",
+    "column_mapping": [
+      {
+        "source": "contact_id",
+        "destination": "contact_id"
+      }
+    ],
+    "write_results_table": false,
+    "fail_on_error": true
+  },
+  "storage": {
+    "input": {
+      "tables": [
+        {
+          "source": "in.c-main.contact_bank_accounts",
+          "destination": "contact_bank_accounts.csv"
+        }
+      ]
+    }
+  }
+}

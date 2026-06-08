@@ -7,7 +7,7 @@ from configuration import Configuration, WriteMode
 def _base(**overrides) -> dict:
     data = {
         "environment": "demo",
-        "email": "demo@ucetnictvi-on-line.cz",
+        "email": "test@example.com",
         "#api_token": "secret",
         "endpoint": "contacts",
         "write_mode": "create",
