@@ -100,7 +100,7 @@ tasks with real code (18 code blocks, 53 checkboxes), covers full spec scope. Us
 invoking `/superpowers:writing-plans`.
 
 ### Phase 4 — Implement on `initial-implementation` branch · owner: `component-develop`
-- [ ] complete
+- [x] complete
 
 > **How this gets executed:** the superpowers plan (Phase 3) is worked task-by-task via
 > `superpowers:subagent-driven-development`, with implementation tasks dispatched to `component-develop`
@@ -111,17 +111,26 @@ invoking `/superpowers:writing-plans`.
 plan; `run()` is a clean orchestrator with logic in private methods; `ruff check` clean. Fine-grained
 step tracking lives in the superpowers plan file — this box tracks the phase as a whole.
 
-**Evidence:** _
+**Evidence:** Verified 2026-06-08 (fresh subagent). Branch `initial-implementation` exists; modules
+endpoints.py/mapping.py/payload.py/configuration.py/client/uol_client.py/component.py all present;
+`run()` is a thin orchestrator delegating to `_write_record`/`_upsert`/`_write_results_table` + UolClient;
+`ruff check src/ tests/` → "All checks passed!". DEMO probe corrected the API hypotheses (conflict=422
+"has already been taken", `items` list key, slug from `_meta.href`). Final review READY_WITH_NOTES, no
+blocking issues; 3 follow-up fixes applied (auth-code parse, upsert missing-key guard, write_mode UI
+dependency gate). Latest commit `c7c19d9`.
 
 ### Phase 5 — Local VCR tests + cassettes · owner: `component-test`
-- [ ] complete
+- [x] complete
 
 **Definition of done:** datadir/unit/VCR tests present; the **full `pytest` suite runs green** (paste
 the `N passed` line, not "should pass"); cassettes recorded and **verifiably sanitized** — grep every
 cassette for secret patterns (the values from `secrets.json`, common keys like `token`/`password`/
 `authorization`/`api_key`, and the configured `VCR_SANITIZERS` targets) and paste a clean result.
 
-**Evidence:** _
+**Evidence:** Verified 2026-06-08 (fresh subagent). `uv run pytest tests/` → **43 passed** (42 unit +
+1 functional wrapping 10 datadir/VCR cases). 10 functional cases under `tests/functional/` each with
+cassettes. Sanitization greps all CLEAN: demo token `3R1Cc_…` NOT found, demo email NOT found,
+`Authorization`/`Basic ` NOT found in functional cassettes. `VCR_SANITIZERS` in component.py.
 
 ### Phase 6 — Full Developer Portal value setup · owner: `component-dev-portal`
 - [ ] complete
