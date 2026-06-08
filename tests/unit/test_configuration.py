@@ -1,7 +1,7 @@
 import pytest
 from keboola.component.exceptions import UserException
 
-from configuration import Configuration, WriteMode
+from configuration import Configuration, Environment, WriteMode
 
 
 def _base(**overrides) -> dict:
@@ -24,6 +24,19 @@ def test_minimal_config_parses_and_exposes_token_via_alias():
     assert cfg.write_mode == WriteMode.create
     assert cfg.write_results_table is True  # default on
     assert cfg.batch_size == 100
+
+
+def test_environment_defaults_to_production_when_omitted():
+    # Safety: an omitted environment must NOT fall back to demo.
+    data = {k: v for k, v in _base().items() if k != "environment"}
+    cfg = Configuration(**data)
+    assert cfg.environment == Environment.production
+
+
+def test_demo_is_still_accepted_programmatically():
+    # demo is hidden from the UI schema but must remain valid in code (for testing).
+    cfg = Configuration(**_base(environment="demo"))
+    assert cfg.environment == Environment.demo
 
 
 def test_demo_base_url():

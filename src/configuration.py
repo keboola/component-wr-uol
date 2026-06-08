@@ -10,6 +10,9 @@ from endpoints import ENDPOINTS
 
 
 class Environment(StrEnum):
+    # `demo` is intentionally NOT offered in configSchema (the UI dropdown) — it's for
+    # our live testing only. It stays valid here so a config can set it programmatically
+    # (datadir fixtures, cf-dev smoke test). Schema enum is a subset of this code enum.
     demo = "demo"
     sandbox = "sandbox"
     production = "production"
@@ -30,7 +33,9 @@ class Configuration(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
     # --- connection (root config) ---
-    environment: Environment = Environment.demo
+    # Default production for safety: a config that omits environment must NOT fall back to
+    # demo. Tests/smoke configs set `demo` explicitly. UI requires an explicit choice anyway.
+    environment: Environment = Environment.production
     customer_id: str = ""
     email: str = ""
     api_token: str = Field(alias="#api_token", default="")

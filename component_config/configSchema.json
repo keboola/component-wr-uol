@@ -1,19 +1,19 @@
 {
   "type": "object",
   "title": "UOL Connection",
-  "required": ["email", "#api_token"],
+  "required": ["environment", "customer_id", "email", "#api_token"],
   "properties": {
     "environment": {
       "type": "string",
       "title": "Environment",
-      "enum": ["demo", "sandbox", "production"],
-      "default": "demo",
+      "enum": ["sandbox", "production"],
+      "default": "production",
       "propertyOrder": 1
     },
     "customer_id": {
       "type": "string",
       "title": "Customer ID",
-      "description": "Required for sandbox/production. Ignored for demo.",
+      "description": "Your UOL customer ID (the subdomain of your UOL instance).",
       "propertyOrder": 2
     },
     "email": {
