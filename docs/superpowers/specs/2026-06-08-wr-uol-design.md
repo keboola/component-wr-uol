@@ -33,13 +33,15 @@ sends each row as a create/update API call.
 - **Secrets** → `#api_token` at config level (`#`-prefixed, platform-encrypted).
 - **Sync actions** (see §5): `testConnection`, `listEndpoints`, `listFields`, `loadColumnMapping`
   (fuzzy auto-map).
-- **Output:** a writer produces no Storage output tables in the normal sense. It writes a small
-  **results table** to `out/tables` (one row per attempted record: `row_index`, `status`,
-  `uol_id`, `error_code`, `error_message`) so failures are inspectable downstream. This table is
-  declared with **`write_always: true`** so it is uploaded even when the job fails (essential for an
-  audit/error table). It carries a `schema` manifest with native data types — the CF default for new
-  components — which requires the portal **`dataTypeSupport=authoritative`** flag (set in Phase 6, see
-  §8). Primary key `row_index`; written incrementally per row run. Default-bucket naming applies.
+- **Output:** a writer produces no Storage output tables in the normal sense. **Optionally** (row-level
+  `write_results_table` toggle, default on) it writes a small **results table** to `out/tables` (one
+  row per attempted record: `row_index`, `status`, `uol_id`, `error_code`, `error_message`) so
+  failures are inspectable downstream. When enabled it is declared with **`write_always: true`** so it
+  is uploaded even when the job fails (essential for an audit/error table), and it carries a `schema`
+  manifest with **native data types** — the CF default for new components — which requires the portal
+  **`dataTypeSupport=authoritative`** flag (set in Phase 6, see §8). Primary key `row_index`; written
+  incrementally per row run. Default-bucket naming applies. When the toggle is off, no output table is
+  produced (errors still surface via logs and, under `fail_on_error`, exit 1).
 
 ## 3. Authentication & connection
 
@@ -70,17 +72,22 @@ component treats every endpoint uniformly: select endpoint → map columns → s
 list is curated (the writable POST/PATCH resources of the API), exposed via the `listEndpoints` sync
 action. v1 ships the full writable set the API documents:
 
-| Endpoint | Path | Notes |
-|---|---|---|
-| Contacts | `/v1/contacts` | upsertable via `external_id`; supports PATCH |
-| Sales invoices | `/v1/sales_invoices` | nested `items[]` |
-| Purchase invoices | `/v1/purchase_invoices` | nested `items[]` |
-| Products | `/v1/products` | master data |
-| Contact bank accounts | `/v1/contact_bank_accounts` | linked to a contact |
-| Cashes (income/disbursement) | `/v1/cashes/...` | document writes |
+| Endpoint | Path | `lookup_key` (→ upsert) | Notes |
+|---|---|---|---|
+| Contacts | `/v1/contacts` | `external_id` | upsertable; supports PATCH |
+| Sales invoices | `/v1/sales_invoices` | `external_id` (confirm on DEMO) | nested `items[]` |
+| Purchase invoices | `/v1/purchase_invoices` | `public_id` (confirm on DEMO) | nested `items[]` |
+| Products | `/v1/products` | `external_id` (confirm on DEMO) | master data |
+| Contact bank accounts | `/v1/contact_bank_accounts` | — (none) | create-only |
+| Cashes (income/disbursement) | `/v1/cashes/...` | — (none) | create-only document writes |
 
-The curated list lives in a single module-level registry (endpoint id → path, label, key field,
-nested-array field names if any). Adding an endpoint later = one registry entry, no new code path.
+The curated list lives in a single module-level registry. Each entry declares:
+`{id, path, label, fields[], nested_fields[], lookup_key}`. **`lookup_key` is the capability that
+gates upsert** — an endpoint with a non-null `lookup_key` (a filterable unique key like `external_id`)
+supports upsert; one without is create-only. `supports_upsert` is derived (`lookup_key is not None`),
+not stored separately. The exact lookup key per endpoint is confirmed against the DEMO instance during
+implementation (the table above is the starting hypothesis). Adding an endpoint later = one registry
+entry, no new code path.
 
 - **Nested fields (Axis 1 decision — JSON column):** for endpoints with nested arrays (invoice
   `items[]`, contact `addresses[]`), the user maps a single input column containing a **JSON array
@@ -91,15 +98,22 @@ nested-array field names if any). Adding an endpoint later = one registry entry,
   "column name = API field" mode. A `loadColumnMapping` sync action pre-fills the mapping by
   fuzzy-matching input columns to the endpoint's fields (see §5). This mirrors the established CF
   writer pattern (wr-abra-flexi, wr-oracle-ebs, sage-intacct-writer).
-- **Write mode (Axis 3 decision — POST-then-fallback, per-row):** each row chooses its write strategy:
+- **Write mode (Axis 3 — capability resolved at config time, not runtime):** whether `upsert` is even
+  available is **decided by the endpoint's `lookup_key` in the registry, before the component runs** —
+  not discovered mid-run. The flow:
+  - **UI gating:** the row-level `write_mode` field is gated via `options.dependencies` so `upsert`
+    only appears for endpoints whose registry entry has a `lookup_key`. Create-only endpoints (no
+    lookup key) show `create` alone. Because the endpoint set is a small curated static list, the
+    dependency map is enumerable in the schema (one entry per upsert-capable endpoint id).
+  - **Config-time validation:** the Pydantic config additionally rejects `write_mode=upsert` on a
+    no-`lookup_key` endpoint by raising `UserException` *before any API call* — a belt-and-suspenders
+    guard in case a config is hand-edited around the UI.
+  - **Runtime mechanism (POST-then-fallback, per the earlier Axis 3 = B choice):** for an
+    upsert-capable endpoint, POST first (most records are new → one call); on a duplicate-conflict
+    response, look the record up by the **known `lookup_key`** (not by parsing an id out of the error)
+    and PATCH it. Having the lookup key guaranteed present is exactly what removes the old "error may
+    not return the id" risk — see §9, now resolved.
   - `create` — always POST; on conflict, record the error and continue (or fail, per `fail_on_error`).
-  - `upsert` — POST first; if the API rejects as a duplicate (e.g. existing `external_id`), fall back
-    to PATCH on the existing record. **Risk:** UOL's error schema (`{error:{code,message}}`) does not
-    reliably return the conflicting record's `id`. Where it does not, upsert degrades to a
-    lookup-then-PATCH (GET by `external_id` → PATCH) for endpoints that support a lookup filter
-    (contacts via `external_id`); for endpoints with no lookup key, `upsert` is unavailable and the
-    UI hides it. This is the one place POST-then-fallback needs a per-endpoint capability flag in the
-    registry. See §9.
 - **Pagination:** only relevant to the `listFields`/lookup reads, not the writes. UOL uses offset
   pagination (`page`/`per_page`, max 250) with a `_meta.pagination` block. The lookup-by-`external_id`
   path uses a filtered single-page GET.
@@ -128,8 +142,11 @@ nested-array field names if any). Adding an endpoint later = one registry entry,
   `destination` a dropdown fed from `_metadata_.uol_fields` populated by `loadColumnMapping`.
 - `batch_size` — int, default 100, bounds 1..250 (matches API `per_page` ceiling for reads;
   writes are per-record but batch controls logging/error-table flush cadence).
-- `fail_on_error` — boolean, default false. False → log per-record errors to the results table and
-  continue; true → raise `UserException` on first failure.
+- `write_results_table` — boolean, default true. When on, emit the per-record results table
+  (`write_always: true`, native-types `schema` manifest) so outcomes/errors are inspectable
+  downstream; when off, no output table is written.
+- `fail_on_error` — boolean, default false. False → record per-record errors (results table if on,
+  always logs) and continue; true → raise `UserException` on first failure.
 
 **Sync actions:**
 - `testConnection` — calls `GET /v1/ping` with the configured Basic auth; returns
@@ -153,7 +170,7 @@ src/
   configuration.py      # Pydantic: Configuration (root) + RowConfiguration + ColumnMapping
   client/
     uol_client.py       # UolClient (wraps keboola-http-client HttpClient): Basic auth, ping/create/update/lookup
-  endpoints.py          # curated endpoint registry: id → {path, label, key_field, nested_fields, fields[], supports_upsert}
+  endpoints.py          # curated endpoint registry: id → {path, label, fields[], nested_fields[], lookup_key}; supports_upsert = lookup_key is not None
 ```
 
 - **Client separation:** `UolClient` owns all HTTP. It wraps `keboola.http_client.HttpClient`
@@ -178,9 +195,11 @@ src/
     errors).
 - **Config model (CF pattern):** Pydantic v2 with nested models (`Authorization` holding
   `email` + `api_token` aliased `#api_token`; `RowConfiguration` holding endpoint/write_mode/
-  column_mapping/batch_size/fail_on_error; `ColumnMapping` = `{source, destination}`). The root
-  `Configuration.__init__` catches `ValidationError` and re-raises `UserException` with a readable
-  message, so bad config fails as exit 1. Fields populated by sync actions default to `""`/empty.
+  column_mapping/batch_size/write_results_table/fail_on_error; `ColumnMapping` = `{source,
+  destination}`). The root `Configuration.__init__` catches `ValidationError` and re-raises
+  `UserException` with a readable message, so bad config fails as exit 1. A model validator rejects
+  `write_mode=upsert` on an endpoint whose registry entry has no `lookup_key` (the config-time guard
+  from §4). Fields populated by sync actions default to `""`/empty.
 - **Key dependencies (CF defaults, already in cookiecutter `pyproject.toml`):** `keboola-component`
   (ComponentBase, sync actions, ValidationResult, SelectElement), **`keboola-http-client`** for the
   HTTP layer (retry/backoff), `keboola-utils`, `pydantic>=2`. No UOL SDK exists (their only published
@@ -198,6 +217,9 @@ src/
   - `auth_failure` — bad token → exit 1 with UOL `0002` message.
   - `fail_on_error_true` — API rejects a record with `fail_on_error=true` → exit 1.
   - `fail_on_error_false` — same rejection with false → exit 0, error captured in results table.
+  - `upsert_on_create_only_endpoint` — `write_mode=upsert` on a no-`lookup_key` endpoint →
+    `UserException`, exit 1 (config-time guard, no API call made).
+  - `results_table_disabled` — `write_results_table=false` → no `out/tables` output produced.
 - **VCR strategy:** record real HTTP against the public DEMO (`test.demo.uol.cz`,
   `demo@ucetnictvi-on-line.cz` + demo token) with `keboola.datadirtest` + VCR. Record: `ping`, a
   contact create, an invoice create with items, an upsert (create→409/duplicate→patch), and an auth
@@ -241,11 +263,14 @@ them:
 
 ## 9. Open risks & blockers
 
-1. **Upsert reliability (medium).** UOL's error response may not return the conflicting record's
-   `id`, so pure POST-then-fallback can't always recover the id to PATCH. Mitigation: per-endpoint
-   `supports_upsert` flag + lookup-by-`external_id` fallback for endpoints that have a lookup key
-   (contacts); hide `upsert` for endpoints that don't. Confirm against DEMO during implementation
-   which endpoints return a usable conflict id.
+1. **Upsert reliability — RESOLVED by design.** The earlier worry (error responses may not return the
+   conflicting record's id) no longer applies: upsert is only offered for endpoints with a registry
+   `lookup_key`, gated in the UI (`options.dependencies`) and enforced by a config-time Pydantic
+   validator — so it's resolved before the run. On conflict we look the record up by the *known*
+   `lookup_key` and PATCH, never by parsing an id from the error. Residual (low): the exact
+   `lookup_key` per endpoint is a hypothesis (see §4 table) to confirm against DEMO during
+   implementation; if an endpoint we assumed upsert-capable has no usable lookup filter, drop its
+   `lookup_key` to null and it becomes create-only.
 2. **Field lists are curated, not introspected (low).** UOL has no "describe endpoint fields" API, so
    `listFields` returns a hand-maintained list derived from the OpenAPI spec. Risk of drift if UOL
    adds fields. Mitigation: keep the registry in one module; document that it tracks the OpenAPI spec.
