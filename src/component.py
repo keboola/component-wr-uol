@@ -88,6 +88,11 @@ class Component(ComponentBase):
             if not client.is_conflict(exc):
                 raise
             key_value = body.get(endpoint.lookup_key)
+            if key_value is None:
+                raise UserException(
+                    f"Upsert on '{endpoint.id}' requires the lookup key '{endpoint.lookup_key}' "
+                    f"to be mapped in the column mapping."
+                )
             existing_id = client.lookup_by_key(endpoint.path, endpoint.lookup_key, key_value)
             if not existing_id:
                 raise

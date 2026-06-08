@@ -1,6 +1,9 @@
 import csv
 from unittest import mock
 
+import pytest
+from keboola.component.exceptions import UserException
+
 from client.uol_client import UolClient, UolClientError
 
 
@@ -68,6 +71,33 @@ def test_run_upsert_falls_back_to_lookup_then_patch_on_conflict(monkeypatch, tmp
     comp.run()
     fake_client.lookup_by_key.assert_called_once()
     fake_client.update.assert_called_once()
+
+
+def test_upsert_missing_lookup_key_raises_user_exception(monkeypatch, tmp_path):
+    """When upsert conflicts but the lookup key is absent from the payload, a
+    clear UserException is raised instead of a cryptic error.  Because
+    _write_record only catches UolClientError, the UserException propagates
+    all the way out of run() as a user-visible exit-1 error."""
+    params = {
+        "environment": "demo", "email": "e@x.cz", "#api_token": "t",
+        "endpoint": "contacts", "write_mode": "upsert",
+        # column_mapping deliberately omits external_id (the lookup key)
+        "column_mapping": [{"source": "name", "destination": "name"}],
+        "fail_on_error": False,  # would normally suppress UolClientError; UserException bypasses this
+        "write_results_table": False,
+    }
+    comp, mod = _make_component(
+        monkeypatch, tmp_path, params,
+        [{"name": "ACME"}],  # no external_id column in the row
+        ["name"],
+    )
+    fake_client = mock.Mock()
+    fake_client.create.side_effect = UolClientError("has already been taken", "duplicate", 422)
+    fake_client.is_conflict.return_value = True
+    monkeypatch.setattr(comp, "_build_client", lambda cfg: fake_client, raising=False)
+
+    with pytest.raises(UserException, match="requires the lookup key"):
+        comp.run()
 
 
 def test_run_create_writes_uol_id_from_meta_href(monkeypatch, tmp_path):

@@ -88,3 +88,14 @@ def test_parse_error_rails_style_validation():
             c.create("/v1/contacts", {"name": "ACME"})
     assert ei.value.code == "has already been taken"
     assert ei.value.status == 422
+
+
+def test_parse_error_flat_auth_failure():
+    # UOL 401 uses a flat root-level shape: {"status":"401","code":"0002","message":"..."}
+    c = _client()
+    err_body = {"status": "401", "code": "0002", "message": "Authentication failed"}
+    with mock.patch.object(c, "_request", return_value=_resp(401, err_body)):
+        with pytest.raises(UolClientError) as ei:
+            c.create("/v1/contacts", {"name": "ACME"})
+    assert ei.value.code == "0002"
+    assert ei.value.status == 401

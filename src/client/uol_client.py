@@ -78,10 +78,25 @@ class UolClient:
                     message=err.get("message", "Unknown error"),
                     status=response.status_code,
                 )
+            # Shape 3: flat root-level {"status": "401", "code": "0002", "message": "..."}
+            root_code = body.get("code")
+            root_message = body.get("message")
+            if root_code is not None and not isinstance(root_code, dict):
+                return UolClientError(
+                    code=str(root_code),
+                    message=root_message if root_message is not None else "Unknown error",
+                    status=response.status_code,
+                )
+            if root_message is not None:
+                return UolClientError(
+                    code="unknown",
+                    message=root_message,
+                    status=response.status_code,
+                )
             # Fallback
             return UolClientError(
                 code="unknown",
-                message=body.get("message", "Unknown error"),
+                message="Unknown error",
                 status=response.status_code,
             )
         except Exception:
