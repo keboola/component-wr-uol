@@ -163,7 +163,7 @@ shows the old cookiecutter values**; they sync from the repo automatically only 
 **Evidence:** _
 
 ### Phase 7 — Deploy + smoke-test in cf-dev (image-tag override) · owner: `component-test` (tier 4)
-- [ ] complete
+- [x] complete
 
 **Definition of done:** an image built from the `initial-implementation` branch exists in the
 platform; a config created in the **cf-dev** project (via kbagent) with the **image tag overridden**
@@ -172,7 +172,18 @@ to that branch build; a real job run **succeeded** end-to-end. Evidence must inc
 `initial-implementation` build, not a stale stable release (a green job against the wrong image is a
 false pass).
 
-**Evidence:** _
+**Evidence:** Verified 2026-06-08 in cf-dev (project 4214), config `01ktkh41f9yaepqb4rfs7f838w`, row
+`contacts`, `runtime.tag=initial-implementation-9`. Job **47267633 `success`** (24s); **resolved image
+`keboola.wr-uol:initial-implementation-9`** (sha256 99f8ef2…) — a branch build, NOT `0.0.1`. Results
+table `out.c-uol-smoke-test.write_results` row: `status=ok`, `uol_id=kbc_smoke_test_sro`. Exercised the
+**upsert path in-platform** (POST → 422 "has already been taken" → lookup by external_id → PATCH) against
+the real UOL DEMO. Earlier create-mode job 47267482 also succeeded (graceful per-row error on duplicate,
+`fail_on_error=false`).
+
+> Notes from the run: (1) the config needed `storage.output.default_bucket` set for the results table to
+> land — the component relies on default-bucket naming, so a config without one fails until a bucket is
+> set (consider `defaultBucket=true` on the portal app, or document it). (2) The cf-dev config sits in dev
+> branch 10893. (3) The earlier "stuck in `created`" jobs cleared once the portal was correctly set up.
 
 ### Phase 8 — Final CF-standards review · owner: `component-checklist-review`
 - [ ] complete
