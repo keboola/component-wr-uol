@@ -1,19 +1,43 @@
 {
   "type": "object",
-  "title": "extractor configuration",
-  "required": [
-    "print_hello"
-  ],
+  "title": "UOL Connection",
+  "required": ["email", "#api_token"],
   "properties": {
-    "print_hello": {
-      "type": "boolean",
-      "title": "Print Hello",
+    "environment": {
+      "type": "string",
+      "title": "Environment",
+      "enum": ["demo", "sandbox", "production"],
+      "default": "demo",
       "propertyOrder": 1
+    },
+    "customer_id": {
+      "type": "string",
+      "title": "Customer ID",
+      "description": "Required for sandbox/production. Ignored for demo.",
+      "propertyOrder": 2
+    },
+    "email": {
+      "type": "string",
+      "title": "API User Email",
+      "propertyOrder": 3
+    },
+    "#api_token": {
+      "type": "string",
+      "title": "API Token",
+      "format": "password",
+      "propertyOrder": 4
+    },
+    "test_connection": {
+      "type": "button",
+      "format": "test-connection",
+      "options": {"async": {"label": "Test Connection", "action": "testConnection"}},
+      "propertyOrder": 5
     },
     "debug": {
       "type": "boolean",
       "title": "Debug",
-      "propertyOrder": 2
+      "default": false,
+      "propertyOrder": 99
     }
   }
 }
