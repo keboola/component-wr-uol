@@ -1,6 +1,7 @@
+import csv
 from unittest import mock
 
-from client.uol_client import UolClientError
+from client.uol_client import UolClient, UolClientError
 
 
 def _make_component(monkeypatch, tmp_path, params, table_rows, columns):
@@ -67,3 +68,35 @@ def test_run_upsert_falls_back_to_lookup_then_patch_on_conflict(monkeypatch, tmp
     comp.run()
     fake_client.lookup_by_key.assert_called_once()
     fake_client.update.assert_called_once()
+
+
+def test_run_create_writes_uol_id_from_meta_href(monkeypatch, tmp_path):
+    """Results table uol_id must be the slug from _meta.href, not a missing 'id' field."""
+    results_path = str(tmp_path / "out.csv")
+    params = {
+        "environment": "demo", "email": "e@x.cz", "#api_token": "t",
+        "endpoint": "contacts", "write_mode": "create",
+        "column_mapping": [{"source": "name", "destination": "name"}],
+        "write_results_table": True,
+    }
+    comp, mod = _make_component(monkeypatch, tmp_path, params, [{"name": "ACME"}], ["name"])
+
+    # Override create_out_table_definition to return a real path for the results CSV
+    out_table = mock.Mock()
+    out_table.full_path = results_path
+    comp.create_out_table_definition = mock.Mock(return_value=out_table)
+
+    # Realistic UOL response: no 'id' field, slug lives in _meta.href
+    uol_response = {"_meta": {"href": "https://test.demo.uol.cz/api/v1/contacts/acme-sro"}}
+    fake_client = UolClient.__new__(UolClient)
+    fake_client.create = mock.Mock(return_value=uol_response)
+
+    monkeypatch.setattr(comp, "_build_client", lambda cfg: fake_client, raising=False)
+    comp.run()
+
+    with open(results_path, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert len(rows) == 1
+    assert rows[0]["uol_id"] == "acme-sro"
+    assert rows[0]["status"] == "ok"

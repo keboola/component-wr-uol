@@ -63,6 +63,19 @@ def test_lookup_by_key_returns_none_when_empty():
         assert c.lookup_by_key("/v1/contacts", "external_id", "nope") is None
 
 
+def test_extract_id_returns_slug_from_meta_href():
+    body = {"_meta": {"href": "https://test.demo.uol.cz/api/v1/contacts/acme-sro"}}
+    assert UolClient.extract_id(body) == "acme-sro"
+
+
+def test_extract_id_returns_empty_when_meta_missing():
+    assert UolClient.extract_id({}) == ""
+
+
+def test_extract_id_returns_empty_when_href_missing():
+    assert UolClient.extract_id({"_meta": {}}) == ""
+
+
 def test_parse_error_rails_style_validation():
     # DEMO-confirmed: 422 body shape
     c = _client()

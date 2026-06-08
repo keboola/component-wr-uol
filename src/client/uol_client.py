@@ -101,6 +101,12 @@ class UolClient:
     def update(self, path: str, record_id: str, payload: dict) -> dict:
         return self._handle(self._request("PATCH", f"{path.lstrip('/')}/{record_id}", json=payload))
 
+    @staticmethod
+    def extract_id(body: dict) -> str:
+        """UOL records have no `id` field; the slug is the last path segment of _meta.href."""
+        href = (body.get("_meta") or {}).get("href", "")
+        return href.rsplit("/", 1)[-1] if href else ""
+
     def lookup_by_key(self, path: str, key_field: str, value: str) -> str | None:
         """Look up a resource by a filterable unique key.
 
@@ -115,11 +121,9 @@ class UolClient:
         # UOL list responses use "items" key (confirmed on DEMO, Task 7)
         data = body.get("items") or []
         if data:
-            # Extract slug from _meta.href (e.g. "https://.../v1/contacts/my_slug" -> "my_slug")
-            meta = data[0].get("_meta") or {}
-            href = meta.get("href", "")
-            if href:
-                return href.rstrip("/").rsplit("/", 1)[-1]
+            slug = self.extract_id(data[0])
+            if slug:
+                return slug
         return None
 
     @staticmethod

@@ -54,7 +54,7 @@ class Component(ComponentBase):
             else:
                 created = client.create(endpoint.path, body)
             return {"row_index": index, "status": "ok",
-                    "uol_id": created.get("id", ""), "error_code": "", "error_message": ""}
+                    "uol_id": client.extract_id(created), "error_code": "", "error_message": ""}
         except UolClientError as exc:
             if cfg.fail_on_error:
                 raise UserException(f"Row {index}: API error [{exc.code}] {exc.message}")
