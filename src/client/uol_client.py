@@ -2,15 +2,28 @@
 
 Wraps keboola.http_client.HttpClient for Basic auth + retry/backoff (incl. 429).
 All API-level errors surface as UolClientError carrying the UOL error code.
+
+DEMO-confirmed behaviour (Task 7):
+- List responses use the key "items", not "data".
+- Resources have no "id" field; the unique slug lives in _meta.href (last path segment)
+  and is duplicated as a resource-specific field (e.g. contact_id, product_id).
+- Duplicate-create returns HTTP 422 with body:
+    {"message": "Validation failed",
+     "errors": [{"resource": "...", "field": "...", "code": "has already been taken"}]}
+  UOL does NOT use a numeric error code like "0005"/"0006"; conflict detection
+  is therefore based on status 422 only (status_code in _CONFLICT_STATUSES) or the
+  sentinel string "has already been taken" in errors[].code.
 """
 
 from typing import Any
 
 from keboola.http_client import HttpClient
 
-# UOL conflict/duplicate error codes (confirm exact codes on DEMO in Task 7).
-_CONFLICT_CODES = {"0005", "0006"}
-_CONFLICT_STATUSES = {409, 422}
+# UOL conflict/duplicate detection (confirmed on DEMO, Task 7).
+# The API returns HTTP 422 with errors[].code == "has already been taken".
+# There is no numeric code in the response body.
+_CONFLICT_STATUSES = {422}
+_CONFLICT_CODES = {"has already been taken"}
 
 
 class UolClientError(Exception):
@@ -39,12 +52,36 @@ class UolClient:
 
     @staticmethod
     def _parse_error(response: Any) -> UolClientError:
+        """Parse a UOL error response.
+
+        UOL uses two error shapes:
+        1. Validation errors (422): {"message": "...", "errors": [{"code": "..."}]}
+        2. Other errors: may vary; fall back to {"message": "..."} with no code.
+        """
         try:
             body = response.json()
+            # Shape 1: Rails-style validation errors
+            errors = body.get("errors") or []
+            if errors and isinstance(errors, list):
+                first = errors[0]
+                code = first.get("code", "unknown")
+                field = first.get("field", "")
+                msg = body.get("message", "Validation failed")
+                if field:
+                    msg = f"{msg} (field: {field})"
+                return UolClientError(code=code, message=msg, status=response.status_code)
+            # Shape 2: legacy {"error": {"code": ..., "message": ...}}
             err = body.get("error", {})
+            if err:
+                return UolClientError(
+                    code=err.get("code", "unknown"),
+                    message=err.get("message", "Unknown error"),
+                    status=response.status_code,
+                )
+            # Fallback
             return UolClientError(
-                code=err.get("code", "unknown"),
-                message=err.get("message", "Unknown error"),
+                code="unknown",
+                message=body.get("message", "Unknown error"),
                 status=response.status_code,
             )
         except Exception:
@@ -65,11 +102,24 @@ class UolClient:
         return self._handle(self._request("PATCH", f"{path.lstrip('/')}/{record_id}", json=payload))
 
     def lookup_by_key(self, path: str, key_field: str, value: str) -> str | None:
+        """Look up a resource by a filterable unique key.
+
+        Returns the resource slug (last segment of _meta.href), which is the
+        value accepted by update() / PATCH. Returns None if not found.
+
+        DEMO-confirmed: list responses use "items" (not "data").
+        Resources have no "id" field; the unique identifier is the slug from _meta.href.
+        """
         response = self._request("GET", path.lstrip("/"), params={key_field: value, "per_page": 1})
         body = self._handle(response)
-        data = body.get("data") or []
+        # UOL list responses use "items" key (confirmed on DEMO, Task 7)
+        data = body.get("items") or []
         if data:
-            return data[0].get("id")
+            # Extract slug from _meta.href (e.g. "https://.../v1/contacts/my_slug" -> "my_slug")
+            meta = data[0].get("_meta") or {}
+            href = meta.get("href", "")
+            if href:
+                return href.rstrip("/").rsplit("/", 1)[-1]
         return None
 
     @staticmethod
