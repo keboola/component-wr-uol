@@ -3,12 +3,14 @@
 import csv
 import logging
 
-from keboola.component.base import ComponentBase
+from keboola.component.base import ComponentBase, sync_action
 from keboola.component.exceptions import UserException
+from keboola.component.sync_actions import SelectElement, ValidationResult
 
 from client.uol_client import UolClient, UolClientError
 from configuration import Configuration, WriteMode
-from endpoints import get_endpoint
+from endpoints import ENDPOINTS, get_endpoint
+from mapping import build_column_mapping_prefill
 from payload import build_payload
 
 RESULTS_TABLE = "write_results.csv"
@@ -73,6 +75,65 @@ class Component(ComponentBase):
             if not existing_id:
                 raise
             return client.update(endpoint.path, existing_id, body)
+
+    @sync_action("testConnection")
+    def test_connection(self) -> ValidationResult:
+        cfg = Configuration(**self.configuration.parameters)
+        try:
+            self._build_client(cfg).ping()
+        except UolClientError as exc:
+            raise UserException(f"Connection failed: [{exc.code}] {exc.message}")
+        return ValidationResult("Connection successful.")
+
+    @sync_action("listEndpoints")
+    def list_endpoints(self) -> list[SelectElement]:
+        return [SelectElement(value=e.id, label=e.label) for e in ENDPOINTS.values()]
+
+    @sync_action("listFields")
+    def list_fields(self) -> list[dict]:
+        endpoint_id = self.configuration.parameters.get("endpoint")
+        if not endpoint_id:
+            raise UserException("Select an endpoint before loading its fields.")
+        endpoint = get_endpoint(endpoint_id)
+        return self._fields_metadata(endpoint)
+
+    @sync_action("loadColumnMapping")
+    def load_column_mapping(self) -> dict:
+        params = self.configuration.parameters
+        endpoint_id = params.get("endpoint")
+        if not endpoint_id:
+            raise UserException("Select an endpoint before loading the column mapping.")
+        endpoint = get_endpoint(endpoint_id)
+        input_mappings = self.configuration.tables_input_mapping
+        if len(input_mappings) != 1:
+            raise UserException(
+                f"Map exactly one input table to this row first (found {len(input_mappings)})."
+            )
+        columns = self._get_input_columns(input_mappings[0].source)
+        existing = params.get("column_mapping", [])
+        mapping = build_column_mapping_prefill(columns, list(endpoint.fields), existing)
+        data = dict(params)
+        data["column_mapping"] = mapping
+        data["_metadata_"] = {"uol_fields": self._fields_metadata(endpoint)}
+        return {"type": "data", "data": data}
+
+    @staticmethod
+    def _fields_metadata(endpoint) -> list[dict]:
+        out = []
+        for f in endpoint.fields:
+            required = f in endpoint.required_fields
+            label = f"{f} (required)" if required else f
+            out.append({"field_name": f, "label": label})
+        return out
+
+    def _get_input_columns(self, source: str) -> list[str]:
+        for table in self.get_input_tables_definitions():
+            if getattr(table, "name", None) == source or getattr(table, "source", None) == source:
+                return list(table.columns)
+        tables = self.get_input_tables_definitions()
+        if tables:
+            return list(tables[0].columns)
+        raise UserException("No input table columns found. Map an input table first.")
 
     def _write_results_table(self, results: list[dict]) -> None:
         # create_out_table_definition signature (confirmed against keboola-component):
