@@ -33,9 +33,13 @@ sends each row as a create/update API call.
 - **Secrets** → `#api_token` at config level (`#`-prefixed, platform-encrypted).
 - **Sync actions** (see §5): `testConnection`, `listEndpoints`, `listFields`, `loadColumnMapping`
   (fuzzy auto-map).
-- **Output:** a writer produces no Storage output tables in the normal sense. It optionally writes a
-  small **results/errors table** to `out/tables` (one row per attempted record with status + error
-  message) so failures are inspectable downstream. Default bucket naming applies if written.
+- **Output:** a writer produces no Storage output tables in the normal sense. It writes a small
+  **results table** to `out/tables` (one row per attempted record: `row_index`, `status`,
+  `uol_id`, `error_code`, `error_message`) so failures are inspectable downstream. This table is
+  declared with **`write_always: true`** so it is uploaded even when the job fails (essential for an
+  audit/error table). It carries a `schema` manifest with native data types — the CF default for new
+  components — which requires the portal **`dataTypeSupport=authoritative`** flag (set in Phase 6, see
+  §8). Primary key `row_index`; written incrementally per row run. Default-bucket naming applies.
 
 ## 3. Authentication & connection
 
@@ -148,12 +152,14 @@ src/
   component.py          # Component(ComponentBase): run() orchestrator + @sync_action methods
   configuration.py      # Pydantic: Configuration (root) + RowConfiguration + ColumnMapping
   client/
-    uol_client.py       # UolClient: HTTP, Basic auth, throttle/backoff, ping/create/update/lookup
+    uol_client.py       # UolClient (wraps keboola-http-client HttpClient): Basic auth, ping/create/update/lookup
   endpoints.py          # curated endpoint registry: id → {path, label, key_field, nested_fields, fields[], supports_upsert}
 ```
 
-- **Client separation:** `UolClient` owns all HTTP — base-URL assembly, Basic auth header, the
-  429 throttle/backoff, and typed methods (`ping()`, `create(endpoint, payload)`,
+- **Client separation:** `UolClient` owns all HTTP. It wraps `keboola.http_client.HttpClient`
+  (CF-standard HTTP layer) for base-URL assembly, retry/backoff, and status handling — configured to
+  retry on HTTP 429 (respecting `Retry-After`) so we don't hand-roll throttling. It adds the Basic
+  auth header and exposes typed methods (`ping()`, `create(endpoint, payload)`,
   `update(endpoint, id, payload)`, `lookup_by_external_id(endpoint, value)`). It raises a typed
   `UolClientError` on API errors carrying the UOL error code + message. Nothing UI/Keboola-specific
   leaks in.
@@ -170,10 +176,16 @@ src/
     nested column, and — when `fail_on_error=true` — the first API rejection.
   - Unexpected (exit 2): everything else (network stack errors not covered by retry, programming
     errors).
-- **Key dependencies:** `keboola.component` (ComponentBase, sync actions, ValidationResult,
-  SelectElement), `httpx` or `requests` for HTTP, `pydantic` v2 for config. No UOL SDK exists
-  (their only published client is Ruby), so a plain REST client is correct. No fuzzy-match library
-  (custom 3-tier, per CF convention).
+- **Config model (CF pattern):** Pydantic v2 with nested models (`Authorization` holding
+  `email` + `api_token` aliased `#api_token`; `RowConfiguration` holding endpoint/write_mode/
+  column_mapping/batch_size/fail_on_error; `ColumnMapping` = `{source, destination}`). The root
+  `Configuration.__init__` catches `ValidationError` and re-raises `UserException` with a readable
+  message, so bad config fails as exit 1. Fields populated by sync actions default to `""`/empty.
+- **Key dependencies (CF defaults, already in cookiecutter `pyproject.toml`):** `keboola-component`
+  (ComponentBase, sync actions, ValidationResult, SelectElement), **`keboola-http-client`** for the
+  HTTP layer (retry/backoff), `keboola-utils`, `pydantic>=2`. No UOL SDK exists (their only published
+  client is Ruby), so wrapping `HttpClient` is the right call. No fuzzy-match library (custom 3-tier,
+  per CF convention). Drop any unused default deps per the pyproject guidance.
 
 ## 7. Testing
 
@@ -207,6 +219,25 @@ src/
 - **Success looks like:** job status `success`; the contact is created in the DEMO instance; the
   results table shows one row with `status=ok`; resolved image tag matches the
   `initial-implementation` build (not a stable release).
+- **Portal native-types flip (Phase 6):** set `dataTypeSupport=authoritative` via
+  `kbagent dev-portal patch --app keboola.wr-uol --property dataTypeSupport --value authoritative`
+  (dry-run, then TTY-confirmed write) so the `schema` manifest the component emits isn't silently
+  downgraded to legacy hints. Confirm with a fresh GET.
+
+## 8a. Infrastructure (cookiecutter defaults — no deviation expected)
+
+The scaffold's infra files already match CF defaults; the plan should keep them aligned, not rewrite
+them:
+- **Dockerfile** — multi-stage (`base` → `test` → `production`), uv-based. The cookiecutter
+  `push.yml` already matches this multi-stage shape and built a green `0.0.1` image, so no pipeline
+  variant change is needed.
+- **pyproject.toml** — `requires-python ~=3.13.0`; deps `keboola-component`, `keboola-http-client`,
+  `keboola-utils`, `pydantic`; ruff `line-length = 120` with `I`+`UP` lint rules; ty for typing.
+  Remove unused default deps (e.g. `freezegun`/`mock` if tests don't need them).
+- **CI** — single repo / single component. `push.yml` calls the shared
+  `keboola/component-ci` reusable workflow with `test_build_target: test` +
+  `docker_build_target: production` (the multi-stage variant, matching the Dockerfile). No
+  matrix/monorepo variant needed.
 
 ## 9. Open risks & blockers
 
