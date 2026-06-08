@@ -139,6 +139,14 @@ cassettes. Sanitization greps all CLEAN: demo token `3R1Cc_…` NOT found, demo 
 config rows), sync actions, and the portal-owned properties (descriptions, UI options, etc.) are live
 in the portal, confirmed via a fresh `kbagent dev-portal` GET.
 
+**Progress (2026-06-08) — partial:** portal-owned property `dataTypeSupport` set to `authoritative`
+(verified via fresh GET, portal version 11) so the results-table native-types `schema` manifest isn't
+downgraded at runtime. Real short/long/configuration descriptions written in the repo
+(commit `960b6e8`). **Still pending (box stays unticked):** the `[script]` properties — configSchema,
+configRowSchema, and the three descriptions — are correct in the repo (branch) but the **portal still
+shows the old cookiecutter values**; they sync from the repo automatically only on the **next release**
+(after PR #1 merges and a version is tagged). Re-confirm with a fresh GET after that release, then tick.
+
 > **Ordering, do not get this wrong:** the `0.0.1` release's CI-sync writes portal values from the
 > repo. If you set portal values *before* that release, the release **overwrites** them. The bootstrap
 > release already happened in Phase 1, so this manual value setup is safe here — but if any further
