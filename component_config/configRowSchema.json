@@ -14,15 +14,30 @@
       "title": "Write Mode",
       "enum": ["create", "upsert"],
       "default": "create",
-      "description": "Upsert is only valid for endpoints with a lookup key (e.g. contacts, products). The component validates this.",
-      "options": {"enum_titles": ["Create", "Upsert (create or update)"]},
+      "description": "Upsert creates or updates an existing record using the endpoint's lookup key.",
+      "options": {
+        "enum_titles": ["Create", "Upsert (create or update)"],
+        "dependencies": {"endpoint": ["contacts", "sales_invoices", "purchase_invoices", "products"]}
+      },
       "propertyOrder": 2
+    },
+    "write_mode_create_only": {
+      "type": "string",
+      "title": "Write Mode",
+      "enum": ["create"],
+      "default": "create",
+      "description": "This endpoint only supports create.",
+      "options": {
+        "enum_titles": ["Create"],
+        "dependencies": {"endpoint": ["contact_bank_accounts"]}
+      },
+      "propertyOrder": 3
     },
     "load_mapping": {
       "type": "button",
       "format": "sync-action",
       "options": {"async": {"label": "Load / Re-load Column Mapping", "action": "loadColumnMapping"}},
-      "propertyOrder": 3
+      "propertyOrder": 4
     },
     "column_mapping": {
       "type": "array",
@@ -42,10 +57,10 @@
           }
         }
       },
-      "propertyOrder": 4
+      "propertyOrder": 5
     },
-    "batch_size": {"type": "integer", "title": "Batch Size", "default": 100, "minimum": 1, "maximum": 250, "propertyOrder": 5},
-    "write_results_table": {"type": "boolean", "title": "Write Results Table", "default": true, "propertyOrder": 6},
-    "fail_on_error": {"type": "boolean", "title": "Fail on First Error", "default": false, "propertyOrder": 7}
+    "batch_size": {"type": "integer", "title": "Batch Size", "default": 100, "minimum": 1, "maximum": 250, "propertyOrder": 6},
+    "write_results_table": {"type": "boolean", "title": "Write Results Table", "default": true, "propertyOrder": 7},
+    "fail_on_error": {"type": "boolean", "title": "Fail on First Error", "default": false, "propertyOrder": 8}
   }
 }
