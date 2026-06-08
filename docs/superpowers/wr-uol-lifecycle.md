@@ -73,23 +73,31 @@ other — both only need Phases 1–5), either order is fine.
 **Evidence:** Verified 2026-06-08. Repo `keboola/component-wr-uol` public, branch `main`. `KBC_DEVELOPERPORTAL_USERNAME`=`keboola+ComponentFactory_CI` (variable) + `KBC_DEVELOPERPORTAL_PASSWORD` (secret) both set. Dev Portal app `keboola.wr-uol` exists under vendor `keboola`. Release `0.0.1` (2026-06-08T08:29:47Z) — workflow run 27125404637 `completed/success` in 2m53s.
 
 ### Phase 2 — Research the source/target system · owner: `component-plan-new`
-- [ ] complete
+- [x] complete
 
 **Definition of done:** a research summary settles API style(s), auth method(s) and which the vendor
 recommends, pagination, rate limits, incremental/cursor support — plus a **feasibility & provisioning
 verdict** (sandbox availability, headless-auth vs admin-only setup). Blockers surfaced to the user.
 
-**Evidence:** _
+**Evidence:** Verified 2026-06-08 (fresh subagent). Spec §3: REST/JSON, HTTP Basic (only method UOL
+offers). §4: offset pagination (`page`/`per_page`, max 250); rate limits 30 req/10s (10 for
+receivables), 429 backoff. §2: writer → no `state.json` watermark (incremental is platform input
+mapping). §3 provisioning: fully self-service token (Settings ▸ Technical ▸ API tokens), public DEMO
+instance available — no blockers. §9: 5 risks documented, upsert resolved by design.
 
 ### Phase 3 — Spec + implementation plan · owner: `component-plan-new`
-- [ ] complete
+- [x] complete
 
 **Definition of done:** `docs/superpowers/specs/...-design.md` committed (full scope: source system,
 Keboola mapping, auth/provisioning, data model, config/schema, code architecture, datadir + VCR
 tests, cf-dev deployment, risks) with **no placeholders/TODOs**, AND a superpowers plan committed at
 `docs/superpowers/plans/...md`. User approved the spec.
 
-**Evidence:** _
+**Evidence:** Verified 2026-06-08 (fresh subagent). Spec `docs/superpowers/specs/2026-06-08-wr-uol-design.md`
+(283 lines, §§1–9, placeholder grep CLEAN, commits `54e8569`/`a801e1f`/`b713bac`). Plan
+`docs/superpowers/plans/2026-06-08-wr-uol.md` (commit `865ddb7`): required header + 11 bite-sized TDD
+tasks with real code (18 code blocks, 53 checkboxes), covers full spec scope. User approved spec by
+invoking `/superpowers:writing-plans`.
 
 ### Phase 4 — Implement on `initial-implementation` branch · owner: `component-develop`
 - [ ] complete
