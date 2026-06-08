@@ -147,6 +147,14 @@ configRowSchema, and the three descriptions — are correct in the repo (branch)
 shows the old cookiecutter values**; they sync from the repo automatically only on the **next release**
 (after PR #1 merges and a version is tagged). Re-confirm with a fresh GET after that release, then tick.
 
+> Correction (2026-06-08): an earlier note here wrongly implied the `0.0.1` release "failed to register
+> the ECR repository". It did **not** fail — CI run `27125404637` pushed the image and registered
+> `repository={type:ecr, tag:0.0.1}` (the bootstrap stub image). `kbagent dev-portal get` showing
+> `repository: null` is an unresolved display/scope discrepancy, NOT a release failure, and does **not**
+> warrant a manual `repository` patch. Phase 7 must smoke-test a *real* code image, which `0.0.1` is not
+> (it's the cookiecutter stub) — so Phase 7 waits on either a post-merge release tag or a KBC dev-branch
+> image test, not a portal write.
+
 > **Ordering, do not get this wrong:** the `0.0.1` release's CI-sync writes portal values from the
 > repo. If you set portal values *before* that release, the release **overwrites** them. The bootstrap
 > release already happened in Phase 1, so this manual value setup is safe here — but if any further
