@@ -186,7 +186,7 @@ the real UOL DEMO. Earlier create-mode job 47267482 also succeeded (graceful per
 > branch 10893. (3) The earlier "stuck in `created`" jobs cleared once the portal was correctly set up.
 
 ### Phase 8 — Final CF-standards review · owner: `component-checklist-review`
-- [ ] complete
+- [x] complete
 
 **Definition of done:** `component-checklist-review` run over the full implementation; no open **blocking**
 (critical/important) findings; component aligns with Component Factory standards.
@@ -196,4 +196,12 @@ the real UOL DEMO. Earlier create-mode job 47267482 also succeeded (graceful per
 > **re-run the Phase 6 verifier afterward** to confirm the portal-owned values survived. Phase 6 is
 > only protected from the *bootstrap* `0.0.1` release automatically.
 
-**Evidence:** _
+**Evidence:** Ran the 12-agent `component-checklist-review` audit 2026-06-08. One **blocking** finding —
+results table wrote a header while the manifest declared `has_header:false` (native-types schema), so
+Storage ingested the header as a junk PK row — plus 8 important findings. All fixed (commit `172ccb1`,
+sample-config tidy `2ea0b73`): `has_header=true` (header kept, manifest matches); transport errors now
+raise `UolClientError`→`UserException` (not exit 2); narrowed `_parse_error`; dead `listFields` removed;
+unused `batch_size` removed; redundant manual `setLevel` removed (ComponentBase handles `debug`);
+typing + `@staticmethod` on private helpers; endpoint select `format`; `write_mode_create_only` alias;
++ testConnection tests & INFO progress logs. Full suite **46 passed**, `ruff` clean, branch CI green.
+Dropped as known false-positives per user: bulk `from e`, client-in-`__init__`, removing the `debug` field.
