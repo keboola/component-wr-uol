@@ -26,7 +26,6 @@
       {"source": "name", "destination": "name"},
       {"source": "external_id", "destination": "external_id"}
     ],
-    "batch_size": 100,
     "write_results_table": true,
     "fail_on_error": false,
     "debug": false
