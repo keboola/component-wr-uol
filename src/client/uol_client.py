@@ -17,6 +17,7 @@ DEMO-confirmed behaviour (Task 7):
 
 from typing import Any
 
+import requests
 from keboola.http_client import HttpClient
 
 # UOL conflict/duplicate detection (confirmed on DEMO, Task 7).
@@ -48,7 +49,14 @@ class UolClient:
     def _request(self, method: str, endpoint_path: str, **kwargs) -> Any:
         # Thin seam over HttpClient so unit tests can mock one method.
         # The installed library exposes _request_raw (not request_raw).
-        return self._http._request_raw(method, endpoint_path, **kwargs)  # noqa: SLF001
+        try:
+            return self._http._request_raw(method, endpoint_path, **kwargs)  # noqa: SLF001
+        except requests.exceptions.RequestException as e:
+            raise UolClientError(
+                code="connection_error",
+                message=f"Could not reach UOL API: {e}",
+                status=None,
+            ) from e
 
     @staticmethod
     def _parse_error(response: Any) -> UolClientError:
@@ -99,8 +107,12 @@ class UolClient:
                 message="Unknown error",
                 status=response.status_code,
             )
-        except Exception:
-            return UolClientError(code="unknown", message="Unparseable error", status=response.status_code)
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return UolClientError(
+                code="unknown",
+                message=f"Unexpected error response (HTTP {response.status_code}): {getattr(response, 'text', '')[:300]}",
+                status=response.status_code,
+            )
 
     def _handle(self, response: Any) -> dict:
         if response.status_code >= 400:

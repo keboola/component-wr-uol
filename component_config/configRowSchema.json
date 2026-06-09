@@ -5,6 +5,7 @@
     "endpoint": {
       "type": "string",
       "title": "Endpoint",
+      "format": "select",
       "enum": [],
       "options": {"async": {"label": "Load Endpoints", "action": "listEndpoints", "autoload": true, "cache": true}},
       "propertyOrder": 1
@@ -59,7 +60,6 @@
       },
       "propertyOrder": 5
     },
-    "batch_size": {"type": "integer", "title": "Batch Size", "default": 100, "minimum": 1, "maximum": 250, "propertyOrder": 6},
     "write_results_table": {"type": "boolean", "title": "Write Results Table", "default": true, "propertyOrder": 7},
     "fail_on_error": {"type": "boolean", "title": "Fail on First Error", "default": false, "propertyOrder": 8}
   }

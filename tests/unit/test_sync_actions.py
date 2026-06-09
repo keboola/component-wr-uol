@@ -1,7 +1,11 @@
+import sys
 from unittest import mock
 
 import pytest
 from keboola.component.exceptions import UserException
+
+sys.path.insert(0, "src")
+from client.uol_client import UolClientError  # noqa: E402
 
 
 def _component(monkeypatch, parameters):
@@ -24,17 +28,28 @@ def test_list_endpoints_returns_select_elements(monkeypatch):
     assert "contact_bank_accounts" in values
 
 
-def test_list_fields_for_contacts_marks_required(monkeypatch):
-    comp, cfg, mod = _component(monkeypatch, {"endpoint": "contacts"})
-    fields = comp.list_fields()
-    name = next(f for f in fields if f["field_name"] == "name")
-    assert "(required)" in name["label"]
+
+def test_test_connection_success_returns_validation_result(monkeypatch):
+    comp, cfg, mod = _component(monkeypatch, {
+        "environment": "demo", "email": "e@x.cz", "#api_token": "t",
+    })
+    fake_client = mock.Mock()
+    fake_client.ping.return_value = None
+    monkeypatch.setattr(mod.Component, "_build_client", staticmethod(lambda c: fake_client))
+    result = comp.test_connection()
+    from keboola.component.sync_actions import ValidationResult
+    assert isinstance(result, ValidationResult)
 
 
-def test_list_fields_without_endpoint_raises(monkeypatch):
-    comp, cfg, mod = _component(monkeypatch, {})
-    with pytest.raises(UserException, match="Select an endpoint"):
-        comp.list_fields()
+def test_test_connection_failure_raises_user_exception(monkeypatch):
+    comp, cfg, mod = _component(monkeypatch, {
+        "environment": "demo", "email": "e@x.cz", "#api_token": "t",
+    })
+    fake_client = mock.Mock()
+    fake_client.ping.side_effect = UolClientError(code="connection_error", message="unreachable", status=None)
+    monkeypatch.setattr(mod.Component, "_build_client", staticmethod(lambda c: fake_client))
+    with pytest.raises(UserException, match="Connection failed"):
+        comp.test_connection()
 
 
 def test_load_column_mapping_fuzzy_fills(monkeypatch):

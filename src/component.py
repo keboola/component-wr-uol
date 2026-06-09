@@ -10,7 +10,7 @@ from keboola.vcr import DefaultSanitizer
 
 from client.uol_client import UolClient, UolClientError
 from configuration import Configuration, WriteMode
-from endpoints import ENDPOINTS, get_endpoint
+from endpoints import ENDPOINTS, Endpoint, get_endpoint
 from mapping import build_column_mapping_prefill
 from payload import build_payload
 
@@ -38,14 +38,12 @@ class Component(ComponentBase):
     def __init__(self):
         super().__init__()
 
-    def _build_client(self, cfg: Configuration) -> UolClient:
+    @staticmethod
+    def _build_client(cfg: Configuration) -> UolClient:
         return UolClient(cfg.base_url, cfg.email, cfg.api_token)
 
     def run(self):
         cfg = Configuration(**self.configuration.parameters)
-        if cfg.debug:
-            logging.getLogger().setLevel(logging.DEBUG)
-
         endpoint = get_endpoint(cfg.endpoint)
         mapping = [m.model_dump() for m in cfg.column_mapping]
 
@@ -57,15 +55,36 @@ class Component(ComponentBase):
 
         client = self._build_client(cfg)
         results: list[dict] = []
+        ok_count = 0
+        err_count = 0
         with open(input_tables[0].full_path, encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
-            for index, row in enumerate(reader):
-                results.append(self._write_record(client, cfg, endpoint, mapping, row, index))
+            rows_list = list(reader)
+        logging.info(
+            "Writing %s rows to endpoint '%s' (mode=%s)",
+            len(rows_list), endpoint.id, cfg.write_mode,
+        )
+        for index, row in enumerate(rows_list):
+            result = self._write_record(client, cfg, endpoint, mapping, row, index)
+            results.append(result)
+            if result["status"] == "ok":
+                ok_count += 1
+            else:
+                err_count += 1
+        logging.info("Done: %s ok, %s error", ok_count, err_count)
 
         if cfg.write_results_table:
             self._write_results_table(results)
 
-    def _write_record(self, client, cfg, endpoint, mapping, row, index) -> dict:
+    def _write_record(
+        self,
+        client: UolClient,
+        cfg: Configuration,
+        endpoint: Endpoint,
+        mapping: list[dict],
+        row: dict,
+        index: int,
+    ) -> dict:
         try:
             body = build_payload(row, mapping, endpoint)
             if cfg.write_mode == WriteMode.upsert:
@@ -81,7 +100,8 @@ class Component(ComponentBase):
             return {"row_index": index, "status": "error", "uol_id": "",
                     "error_code": exc.code, "error_message": exc.message}
 
-    def _upsert(self, client, endpoint, body) -> dict:
+    @staticmethod
+    def _upsert(client: UolClient, endpoint: Endpoint, body: dict) -> dict:
         try:
             return client.create(endpoint.path, body)
         except UolClientError as exc:
@@ -111,14 +131,6 @@ class Component(ComponentBase):
     def list_endpoints(self) -> list[SelectElement]:
         return [SelectElement(value=e.id, label=e.label) for e in ENDPOINTS.values()]
 
-    @sync_action("listFields")
-    def list_fields(self) -> list[dict]:
-        endpoint_id = self.configuration.parameters.get("endpoint")
-        if not endpoint_id:
-            raise UserException("Select an endpoint before loading its fields.")
-        endpoint = get_endpoint(endpoint_id)
-        return self._fields_metadata(endpoint)
-
     @sync_action("loadColumnMapping")
     def load_column_mapping(self) -> dict:
         params = self.configuration.parameters
@@ -140,7 +152,7 @@ class Component(ComponentBase):
         return {"type": "data", "data": data}
 
     @staticmethod
-    def _fields_metadata(endpoint) -> list[dict]:
+    def _fields_metadata(endpoint: Endpoint) -> list[dict]:
         out = []
         for f in endpoint.fields:
             required = f in endpoint.required_fields
@@ -168,6 +180,7 @@ class Component(ComponentBase):
             incremental=True,
             schema=RESULTS_COLUMNS,
             write_always=True,
+            has_header=True,
         )
         with open(table.full_path, "w", encoding="utf-8", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=RESULTS_COLUMNS)

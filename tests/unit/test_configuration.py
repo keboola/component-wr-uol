@@ -23,7 +23,6 @@ def test_minimal_config_parses_and_exposes_token_via_alias():
     assert cfg.endpoint == "contacts"
     assert cfg.write_mode == WriteMode.create
     assert cfg.write_results_table is True  # default on
-    assert cfg.batch_size == 100
 
 
 def test_environment_defaults_to_production_when_omitted():
@@ -65,6 +64,12 @@ def test_upsert_on_capable_endpoint_ok():
     assert cfg.write_mode == WriteMode.upsert
 
 
-def test_batch_size_out_of_range_raises_userexception():
-    with pytest.raises(UserException, match="batch_size"):
-        Configuration(**_base(batch_size=9999))
+def test_write_mode_create_only_alias_maps_to_write_mode():
+    # FIX 5: write_mode_create_only saved value must resolve to write_mode=create
+    data = _base(endpoint="contact_bank_accounts")
+    del data["write_mode"]
+    data["write_mode_create_only"] = "create"
+    cfg = Configuration(**data)
+    assert cfg.write_mode == WriteMode.create
+
+

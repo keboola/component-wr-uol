@@ -4,7 +4,7 @@
 from enum import StrEnum
 
 from keboola.component.exceptions import UserException
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from endpoints import ENDPOINTS
 
@@ -43,9 +43,11 @@ class Configuration(BaseModel):
 
     # --- row-level ---
     endpoint: str = ""
-    write_mode: WriteMode = WriteMode.create
+    write_mode: WriteMode = Field(
+        default=WriteMode.create,
+        validation_alias=AliasChoices("write_mode", "write_mode_create_only"),
+    )
     column_mapping: list[ColumnMapping] = Field(default_factory=list)
-    batch_size: int = Field(default=100, ge=1, le=250)
     write_results_table: bool = True
     fail_on_error: bool = False
 

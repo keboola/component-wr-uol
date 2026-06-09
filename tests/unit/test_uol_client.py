@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+import requests
 
 from client.uol_client import UolClient, UolClientError
 
@@ -88,6 +89,16 @@ def test_parse_error_rails_style_validation():
             c.create("/v1/contacts", {"name": "ACME"})
     assert ei.value.code == "has already been taken"
     assert ei.value.status == 422
+
+
+def test_transport_error_becomes_uolclienterror_with_connection_error_code():
+    c = _client()
+    with mock.patch.object(c._http, "_request_raw", side_effect=requests.exceptions.ConnectionError("refused")):
+        with pytest.raises(UolClientError) as ei:
+            c.ping()
+    assert ei.value.code == "connection_error"
+    assert ei.value.status is None
+    assert "Could not reach UOL API" in ei.value.message
 
 
 def test_parse_error_flat_auth_failure():

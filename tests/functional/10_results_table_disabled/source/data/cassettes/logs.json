@@ -9,9 +9,21 @@
       "timestamp": "2026-06-08T10:52:12.663Z"
     },
     {
+      "level": "INFO",
+      "logger": "root",
+      "message": "Writing 1 rows to endpoint 'contacts' (mode=create)",
+      "timestamp": "2026-06-08T10:52:12.663Z"
+    },
+    {
       "level": "WARNING",
       "logger": "root",
       "message": "Row 0 failed: [REDACTED] Validation failed (field: external_id)",
+      "timestamp": "2026-06-08T10:52:12.663Z"
+    },
+    {
+      "level": "INFO",
+      "logger": "root",
+      "message": "Done: 0 ok, 1 error",
       "timestamp": "2026-06-08T10:52:12.663Z"
     }
   ]
