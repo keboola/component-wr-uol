@@ -1,6 +1,8 @@
 """Pydantic configuration for wr-uol. Connection fields are flat at root level
 (the platform merges root + row parameters into one dict before run)."""
 
+from __future__ import annotations
+
 from enum import StrEnum
 
 from keboola.component.exceptions import UserException
@@ -58,7 +60,7 @@ class Configuration(BaseModel):
             raise
         except ValidationError as exc:
             messages = [f"{err['loc'][0]}: {err['msg']}" for err in exc.errors()]
-            raise UserException(f"Validation Error: {', '.join(messages)}")
+            raise UserException(f"Validation Error: {', '.join(messages)}") from exc
 
     @model_validator(mode="after")
     def _validate_upsert_capability(self) -> Configuration:
@@ -66,8 +68,7 @@ class Configuration(BaseModel):
             ep = ENDPOINTS.get(self.endpoint)
             if ep is not None and ep.lookup_key is None:
                 raise UserException(
-                    f"Endpoint '{self.endpoint}' does not support upsert (no lookup key). "
-                    f"Use write_mode 'create'."
+                    f"Endpoint '{self.endpoint}' does not support upsert (no lookup key). Use write_mode 'create'."
                 )
         return self
 

@@ -22,7 +22,10 @@ pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+# Pinned explicitly: with target-version inferred from requires-python (py314),
+# ruff 0.15.x mis-formats parenthesized multi-type `except (...)` clauses into
+# invalid syntax. Pin to py312 until that formatter bug is fixed.
+target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "G"]

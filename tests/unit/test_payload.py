@@ -8,17 +8,18 @@ from payload import build_payload
 def test_scalar_fields_pass_through_as_strings():
     ep = get_endpoint("contacts")
     row = {"name": "ACME", "external_id": "C-1", "ignore_me": "x"}
-    mapping = [{"source": "name", "destination": "name"},
-               {"source": "external_id", "destination": "external_id"},
-               {"source": "ignore_me", "destination": ""}]  # blank dest dropped
+    mapping = [
+        {"source": "name", "destination": "name"},
+        {"source": "external_id", "destination": "external_id"},
+        {"source": "ignore_me", "destination": ""},
+    ]  # blank dest dropped
     assert build_payload(row, mapping, ep) == {"name": "ACME", "external_id": "C-1"}
 
 
 def test_nested_json_column_is_parsed():
     ep = get_endpoint("contacts")
     row = {"name": "ACME", "addresses": '[{"city": "Praha"}]'}
-    mapping = [{"source": "name", "destination": "name"},
-               {"source": "addresses", "destination": "addresses"}]
+    mapping = [{"source": "name", "destination": "name"}, {"source": "addresses", "destination": "addresses"}]
     assert build_payload(row, mapping, ep) == {
         "name": "ACME",
         "addresses": [{"city": "Praha"}],

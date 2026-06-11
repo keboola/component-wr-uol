@@ -71,5 +71,3 @@ def test_write_mode_create_only_alias_maps_to_write_mode():
     data["write_mode_create_only"] = "create"
     cfg = Configuration(**data)
     assert cfg.write_mode == WriteMode.create
-
-

@@ -37,8 +37,16 @@ ENDPOINTS: dict[str, Endpoint] = {
         path="/v1/contacts",
         label="Contacts",
         fields=(
-            "name", "company_number", "tin", "vatin", "vat_payer",
-            "business_entity", "external_id", "country_id", "contract_id", "addresses",
+            "name",
+            "company_number",
+            "tin",
+            "vatin",
+            "vat_payer",
+            "business_entity",
+            "external_id",
+            "country_id",
+            "contract_id",
+            "addresses",
         ),
         required_fields=("name",),
         nested_fields=("addresses",),
@@ -49,8 +57,15 @@ ENDPOINTS: dict[str, Endpoint] = {
         path="/v1/sales_invoices",
         label="Sales invoices",
         fields=(
-            "buyer_id", "currency_id", "bank_account_id", "status", "type",
-            "text", "note", "external_id", "items",
+            "buyer_id",
+            "currency_id",
+            "bank_account_id",
+            "status",
+            "type",
+            "text",
+            "note",
+            "external_id",
+            "items",
         ),
         required_fields=("buyer_id", "items"),
         nested_fields=("items",),
@@ -61,8 +76,13 @@ ENDPOINTS: dict[str, Endpoint] = {
         path="/v1/purchase_invoices",
         label="Purchase invoices",
         fields=(
-            "seller_id", "public_id", "payment_method", "status",
-            "total_amount", "vat1_amount", "items",
+            "seller_id",
+            "public_id",
+            "payment_method",
+            "status",
+            "total_amount",
+            "vat1_amount",
+            "items",
         ),
         required_fields=("seller_id", "payment_method"),
         nested_fields=("items",),
@@ -92,6 +112,6 @@ ENDPOINTS: dict[str, Endpoint] = {
 def get_endpoint(endpoint_id: str) -> Endpoint:
     try:
         return ENDPOINTS[endpoint_id]
-    except KeyError:
+    except KeyError as exc:
         known = ", ".join(sorted(ENDPOINTS))
-        raise UserException(f"Unknown endpoint '{endpoint_id}'. Known endpoints: {known}.")
+        raise UserException(f"Unknown endpoint '{endpoint_id}'. Known endpoints: {known}.") from exc

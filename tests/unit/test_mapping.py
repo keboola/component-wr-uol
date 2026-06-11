@@ -29,7 +29,7 @@ def test_prefill_preserves_existing_and_fills_blanks():
     existing = [{"source": "name", "destination": "country_id"}]  # user override kept
     result = build_column_mapping_prefill(columns, fields, existing)
     assert result == [
-        {"source": "name", "destination": "country_id"},   # preserved, not re-matched
+        {"source": "name", "destination": "country_id"},  # preserved, not re-matched
         {"source": "External ID", "destination": "external_id"},  # fuzzy filled
-        {"source": "weird_col", "destination": ""},          # no match → blank
+        {"source": "weird_col", "destination": ""},  # no match → blank
     ]

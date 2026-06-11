@@ -35,9 +35,7 @@ def build_column_mapping_prefill(
     columns get a fuzzy-matched destination.
     """
     existing_by_source = {
-        m.get("source"): m.get("destination", "")
-        for m in existing
-        if isinstance(m, dict) and m.get("source")
+        m.get("source"): m.get("destination", "") for m in existing if isinstance(m, dict) and m.get("source")
     }
     result: list[dict] = []
     for col in columns:

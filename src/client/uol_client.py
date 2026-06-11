@@ -117,7 +117,21 @@ class UolClient:
     def _handle(self, response: Any) -> dict:
         if response.status_code >= 400:
             raise self._parse_error(response)
-        return response.json()
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise UolClientError(
+                code="unexpected_response",
+                message=f"UOL returned a non-JSON 2xx body (HTTP {response.status_code}).",
+                status=response.status_code,
+            ) from exc
+        if not isinstance(body, dict):
+            raise UolClientError(
+                code="unexpected_response",
+                message=f"UOL returned a non-object 2xx body (HTTP {response.status_code}).",
+                status=response.status_code,
+            )
+        return body
 
     def ping(self) -> None:
         self._handle(self._request("GET", "v1/ping"))
@@ -129,9 +143,12 @@ class UolClient:
         return self._handle(self._request("PATCH", f"{path.lstrip('/')}/{record_id}", json=payload))
 
     @staticmethod
-    def extract_id(body: dict) -> str:
+    def extract_id(body: Any) -> str:
         """UOL records have no `id` field; the slug is the last path segment of _meta.href."""
-        href = (body.get("_meta") or {}).get("href", "")
+        if not isinstance(body, dict):
+            return ""
+        meta = body.get("_meta")
+        href = meta.get("href", "") if isinstance(meta, dict) else ""
         return href.rsplit("/", 1)[-1] if href else ""
 
     def lookup_by_key(self, path: str, key_field: str, value: str) -> str | None:

@@ -21,8 +21,7 @@ def build_payload(row: dict, column_mapping: list[dict], endpoint: Endpoint) -> 
             continue  # unmapped column → dropped
         if source not in row:
             raise UserException(
-                f"Mapped source column '{source}' not found in input table for "
-                f"endpoint '{endpoint.id}'."
+                f"Mapped source column '{source}' not found in input table for endpoint '{endpoint.id}'."
             )
         value = row[source]
         if destination in endpoint.nested_fields:
@@ -33,9 +32,8 @@ def build_payload(row: dict, column_mapping: list[dict], endpoint: Endpoint) -> 
                 payload[destination] = json.loads(value)
             except json.JSONDecodeError as exc:
                 raise UserException(
-                    f"Column '{source}' mapped to nested field '{destination}' is "
-                    f"not valid JSON: {exc}"
-                )
+                    f"Column '{source}' mapped to nested field '{destination}' is not valid JSON: {exc}"
+                ) from exc
         else:
             payload[destination] = value
     return payload

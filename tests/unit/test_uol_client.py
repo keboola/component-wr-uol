@@ -51,8 +51,10 @@ def test_is_conflict_true_for_conflict_code_without_status():
 def test_lookup_by_key_returns_slug_from_meta_href():
     # DEMO-confirmed: list response uses "items", id is slug from _meta.href
     c = _client()
-    body = {"items": [{"_meta": {"href": "https://example.com/v1/contacts/my_slug"},
-                       "external_id": "EXT-1"}], "_meta": {}}
+    body = {
+        "items": [{"_meta": {"href": "https://example.com/v1/contacts/my_slug"}, "external_id": "EXT-1"}],
+        "_meta": {},
+    }
     with mock.patch.object(c, "_request", return_value=_resp(200, body)):
         found = c.lookup_by_key("/v1/contacts", "external_id", "EXT-1")
     assert found == "my_slug"
