@@ -1,0 +1,25 @@
+{
+  "files": {},
+  "hash_algorithm": "sha256",
+  "tables": {
+    "write_results.csv": {
+      "columns": [
+        "row_index",
+        "status",
+        "uol_id",
+        "error_code",
+        "error_message"
+      ],
+      "hash": "sha256:731f39d88cc633901d516c399c6e39fbed4c8a14574638b189d7996721c42883",
+      "row_count": 2,
+      "size_bytes": 213
+    },
+    "write_results.csv.manifest": {
+      "columns": null,
+      "hash": "sha256:06dd5e237204393b1c467915e7ea015690b298808f60dff8659bc51300e6de99",
+      "row_count": null,
+      "size_bytes": 576
+    }
+  },
+  "version": "1.0"
+}

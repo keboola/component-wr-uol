@@ -87,7 +87,7 @@ class Component(ComponentBase):
             with open(input_path, encoding="utf-8") as fh:
                 reader = csv.DictReader(fh)
                 for index, row in enumerate(reader):
-                    result = self._write_record(endpoint, mapping, row, index)
+                    result = self._write_record(endpoint, mapping, row, index, results_writer)
                     if result.status == "ok":
                         ok_count += 1
                     else:
@@ -112,6 +112,7 @@ class Component(ComponentBase):
         mapping: list[dict],
         row: dict,
         index: int,
+        results_writer: _ResultsWriter | None = None,
     ) -> WriteResult:
         cfg = self._config
         client = self._client
@@ -137,6 +138,14 @@ class Component(ComponentBase):
             return WriteResult(row_index=index, status="ok", uol_id=client.extract_id(created))
         except UolClientError as exc:
             if cfg.fail_on_error:
+                # Write the failing row's error result to the results table BEFORE raising so
+                # the audit is never silent about the failure (write_always=True uploads partial
+                # results even on abort, so the error entry must be flushed first).
+                error_result = WriteResult(
+                    row_index=index, status="error", error_code=exc.code, error_message=exc.message
+                )
+                if results_writer is not None:
+                    results_writer.write(asdict(error_result))
                 raise UserException(f"Row {index}: API error [{exc.code}] {exc.message}")
             logging.warning("Row %s failed: [%s] %s", index, exc.code, exc.message)
             return WriteResult(row_index=index, status="error", error_code=exc.code, error_message=exc.message)

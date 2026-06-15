@@ -152,3 +152,105 @@ def test_run_create_writes_uol_id_from_meta_href(monkeypatch, tmp_path):
     assert len(rows) == 1
     assert rows[0]["uol_id"] == "acme-sro"
     assert rows[0]["status"] == "ok"
+
+
+def test_fail_on_error_true_records_error_row_before_abort(monkeypatch, tmp_path):
+    """When fail_on_error=True the failing row's error result must appear in the
+    results table BEFORE the UserException propagates (finding 1 fix)."""
+    results_path = str(tmp_path / "out.csv")
+    params = {
+        "environment": "demo",
+        "email": "e@x.cz",
+        "#api_token": "t",
+        "endpoint": "contacts",
+        "write_mode": "create",
+        "column_mapping": [{"source": "external_id", "destination": "external_id"}],
+        "write_results_table": True,
+        "fail_on_error": True,
+    }
+    comp, mod = _make_component(
+        monkeypatch,
+        tmp_path,
+        params,
+        [{"external_id": "X1"}, {"external_id": "X2"}],
+        ["external_id"],
+    )
+
+    out_table = mock.Mock()
+    out_table.full_path = results_path
+    comp.create_out_table_definition = mock.Mock(return_value=out_table)
+
+    # First row succeeds, second row triggers an API error that causes abort.
+    # side_effect as a callable avoids deepcopy issues with UolClientError.
+    _call_count = {"n": 0}
+
+    def _create_side_effect(path, body):
+        _call_count["n"] += 1
+        if _call_count["n"] == 1:
+            return {"_meta": {"href": "https://test.demo.uol.cz/api/v1/contacts/x1"}}
+        raise UolClientError("invalid", "Validation failed", 422)
+
+    fake_client = mock.Mock()
+    fake_client.create.side_effect = _create_side_effect
+    from keboola.component.exceptions import UserException
+
+    comp._client = fake_client
+
+    with pytest.raises(UserException, match="Row 1"):
+        comp.run()
+
+    # The results file must exist and contain BOTH rows: row 0 ok and row 1 error.
+    with open(results_path, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert len(rows) == 2, f"Expected 2 rows in results (ok + error), got {len(rows)}: {rows}"
+    assert rows[0]["status"] == "ok"
+    assert rows[1]["status"] == "error"
+    assert rows[1]["row_index"] == "1"
+
+
+def test_fail_on_error_false_bad_payload_records_skip_and_exits_ok(monkeypatch, tmp_path):
+    """When fail_on_error=False and build_payload raises UserException, the row must be
+    recorded as an error/skip result and the job must complete successfully (finding 2 fix)."""
+    results_path = str(tmp_path / "out.csv")
+    params = {
+        "environment": "demo",
+        "email": "e@x.cz",
+        "#api_token": "t",
+        "endpoint": "sales_invoices",
+        "write_mode": "create",
+        "column_mapping": [
+            {"source": "buyer_id", "destination": "buyer_id"},
+            {"source": "items", "destination": "items"},
+        ],
+        "write_results_table": True,
+        "fail_on_error": False,
+    }
+    comp, mod = _make_component(
+        monkeypatch,
+        tmp_path,
+        params,
+        [{"buyer_id": "B1", "items": "{not valid json!!!}"}],
+        ["buyer_id", "items"],
+    )
+
+    out_table = mock.Mock()
+    out_table.full_path = results_path
+    comp.create_out_table_definition = mock.Mock(return_value=out_table)
+
+    fake_client = mock.Mock()
+    # create should NOT be called because build_payload fails first
+    comp._client = fake_client
+
+    # Must NOT raise — job exits 0
+    comp.run()
+
+    fake_client.create.assert_not_called()
+
+    with open(results_path, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert len(rows) == 1
+    assert rows[0]["status"] == "error"
+    assert rows[0]["row_index"] == "0"
+    assert rows[0]["error_code"] == "payload_error"

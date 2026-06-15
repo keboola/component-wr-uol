@@ -1,0 +1,1 @@
+{"id": "in.c-main.sales_invoices", "uri": "", "name": "sales_invoices.csv", "primary_key": [], "created": "2026-01-01T00:00:00+00:00", "last_change_date": "2026-01-01T00:00:00+00:00", "last_import_date": "2026-01-01T00:00:00+00:00", "rows_count": 1, "data_size_bytes": 0, "is_alias": false, "columns": ["buyer_id", "items"]}
