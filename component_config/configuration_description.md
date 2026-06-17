@@ -1,1 +1,1 @@
-Configuration description.
+Set the UOL environment, customer ID, API user email and API token at the connection level. Then add one configuration row per write target: pick an endpoint, link an input table, load and adjust the column mapping, and choose the write mode (create or upsert).

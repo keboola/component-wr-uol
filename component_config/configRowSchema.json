@@ -1,1 +1,66 @@
-{}
+{
+  "type": "object",
+  "title": "UOL Write Target",
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "title": "Endpoint",
+      "format": "select",
+      "enum": [],
+      "options": {"async": {"label": "Load Endpoints", "action": "listEndpoints", "autoload": true, "cache": true}},
+      "propertyOrder": 1
+    },
+    "write_mode": {
+      "type": "string",
+      "title": "Write Mode",
+      "enum": ["create", "upsert"],
+      "default": "create",
+      "description": "Upsert creates or updates an existing record using the endpoint's lookup key.",
+      "options": {
+        "enum_titles": ["Create", "Upsert (create or update)"],
+        "dependencies": {"endpoint": ["contacts", "sales_invoices", "purchase_invoices", "products"]}
+      },
+      "propertyOrder": 2
+    },
+    "write_mode_create_only": {
+      "type": "string",
+      "title": "Write Mode",
+      "enum": ["create"],
+      "default": "create",
+      "description": "This endpoint only supports create.",
+      "options": {
+        "enum_titles": ["Create"],
+        "dependencies": {"endpoint": ["contact_bank_accounts"]}
+      },
+      "propertyOrder": 3
+    },
+    "load_mapping": {
+      "type": "button",
+      "format": "sync-action",
+      "options": {"async": {"label": "Load / Re-load Column Mapping", "action": "loadColumnMapping"}},
+      "propertyOrder": 4
+    },
+    "column_mapping": {
+      "type": "array",
+      "title": "Column Mapping",
+      "format": "table",
+      "items": {
+        "type": "object",
+        "required": ["source", "destination"],
+        "properties": {
+          "source": {"type": "string", "title": "Source Column", "options": {"readOnly": true}},
+          "destination": {
+            "type": "string",
+            "title": "UOL Field",
+            "format": "select",
+            "watch": {"uol_fields": "_metadata_.uol_fields"},
+            "enumSource": [{"source": "uol_fields", "value": "{{item.field_name}}", "title": "{{item.label}}"}]
+          }
+        }
+      },
+      "propertyOrder": 5
+    },
+    "write_results_table": {"type": "boolean", "title": "Write Results Table", "default": true, "propertyOrder": 7},
+    "fail_on_error": {"type": "boolean", "title": "Fail on First Error", "default": false, "propertyOrder": 8}
+  }
+}

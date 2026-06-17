@@ -1,0 +1,30 @@
+{
+  "exit_code": null,
+  "stderr": "No action defined in the configuration, using the default run action.\nRow 0 failed: [REDACTED] Validation failed (field: contact_id)\n",
+  "logs": [
+    {
+      "level": "WARNING",
+      "logger": "root",
+      "message": "No action defined in the configuration, using the default run action.",
+      "timestamp": "2026-06-08T10:52:12.565Z"
+    },
+    {
+      "level": "INFO",
+      "logger": "root",
+      "message": "Writing 1 rows to endpoint 'contacts' (mode=create)",
+      "timestamp": "2026-06-08T10:52:12.565Z"
+    },
+    {
+      "level": "WARNING",
+      "logger": "root",
+      "message": "Row 0 failed: [REDACTED] Validation failed (field: contact_id)",
+      "timestamp": "2026-06-08T10:52:12.565Z"
+    },
+    {
+      "level": "INFO",
+      "logger": "root",
+      "message": "Done: 0 ok, 1 error",
+      "timestamp": "2026-06-08T10:52:12.565Z"
+    }
+  ]
+}

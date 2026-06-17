@@ -1,0 +1,7 @@
+{
+  "_metadata": {"freeze_time": null, "keboola_vcr_version": "0.5.0", "recorded_at": "2026-06-08T10:52:12.310641+00:00"},
+  "interactions": [
+    {"request": {"body": "{\"external_id\": \"KBC-FUNC-TEST-MISSING-REQUIRED\"}", "headers": {"Accept": ["application/json"], "Content-Length": ["49"], "Content-Type": ["application/json"]}, "method": "POST", "uri": "https://test.demo.uol.cz/api/v1/contacts"}, "response": {"body": {"string": "{\"message\": \"Validation failed\", \"errors\": [{\"resource\": \"Contact\", \"field\": \"contact_id\", \"code\": \"REDACTED\"}, {\"resource\": \"Contact\", \"field\": \"name\", \"code\": \"REDACTED\"}], \"documentation_url\": \"https://api.uol.cz\"}"}, "headers": {"Content-Length": ["213"], "Content-Type": ["application/json"]}, "status": {"code": 422, "message": "Unprocessable Entity"}}}
+  ],
+  "version": 1
+}

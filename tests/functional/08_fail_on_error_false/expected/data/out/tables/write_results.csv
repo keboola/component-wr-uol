@@ -1,0 +1,2 @@
+row_index,status,uol_id,error_code,error_message
+0,error,,REDACTED,Validation failed (field: contact_id)

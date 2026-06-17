@@ -1,0 +1,2 @@
+row_index,status,uol_id,error_code,error_message
+0,error,,payload_error,Column 'items' mapped to nested field 'items' is not valid JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)

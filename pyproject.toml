@@ -4,23 +4,28 @@ dynamic = ["version"]
 readme = "README.md"
 requires-python = "~=3.14.0"
 dependencies = [
-    "freezegun>=1.5.1",
     "keboola-component>=1.9.0",
     "keboola-http-client>=1.0.1",
-    "keboola-utils>=1.1.0",
     "pydantic>=2.11.7",
 ]
 
 [dependency-groups]
 dev = [
     "keboola.datadirtest>=2.0.0",
+    "keboola-vcr>=0.5.0",
     "pytest>=9.0.2",
     "ruff>=0.15.2",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+# Pinned explicitly: with target-version inferred from requires-python (py314),
+# ruff 0.15.x mis-formats parenthesized multi-type `except (...)` clauses into
+# invalid syntax. Pin to py312 until that formatter bug is fixed.
+target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "G"]

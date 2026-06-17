@@ -1,0 +1,2 @@
+buyer_id,external_id,items
+kbc-test-create-ok,KBC-INV-1780916107,"[{""product_id"":""konzultace"",""count"":""1"",""unit_price"":""200.0"",""total_price"":""200.0"",""vat_rate"":""21""}]"
